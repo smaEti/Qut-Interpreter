@@ -9,26 +9,26 @@ import (
 
 func main() {
 	if len(os.Args) == 1 {
-		fmt.Println(`ERROR: Expected atleast 2 arguments.
-			for example: qut file.qut
-			`)
+		fmt.Println(`ERROR: Expected at least 2 arguments.
+Usage: qut file.qut`)
 		os.Exit(1)
 	}
+
 	filename := os.Args[1]
 	fileExtention := path.Ext(filename)
 
 	if strings.Compare(fileExtention, ".qut") != 0 {
-		fmt.Println(`ERROR: this is not a qut file.`)
+		fmt.Println("ERROR: This is not a qut file.")
 		os.Exit(1)
 	}
 
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
+		fmt.Println("ERROR:", err)
 		os.Exit(1)
 	}
-	var fileStrings string
-	stringFields := strings.Fields(strings.Trim(string(file), fileStrings))
+
+	stringFields := strings.Fields(strings.TrimSpace(string(file)))
 	instructions := make([]int, len(stringFields))
 	for i, field := range stringFields {
 		instructions[i], err = tokenize(field, i)
@@ -37,41 +37,87 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	jumpTable := make(map[int]int)
+	stack := []int{}
+	for i, inst := range instructions {
+		if inst == 0 {
+			stack = append(stack, i)
+		} else if inst == 7 {
+			if len(stack) == 0 {
+				fmt.Printf("ERROR: unmatched QUT at instruction %d\n", i)
+				os.Exit(1)
+			}
+			start := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			jumpTable[start] = i
+			jumpTable[i] = start
+		}
+	}
+	if len(stack) > 0 {
+		fmt.Printf("ERROR: %d unmatched qut instruction(s) found at positions: ", len(stack))
+		for idx, pos := range stack {
+			if idx > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Print(pos)
+		}
+		fmt.Println()
+		os.Exit(1)
+	}
+
 	tape := make([]int, 250)
 	tapeCell := 0
 	register := 0
-	for i, instruct := range instructions {
-		runInstruction(tape, &tapeCell, &register, &i, instruct)
+
+	for i := 0; i < len(instructions); i++ {
+		runInstruction(tape, &tapeCell, &register, &i, instructions[i], jumpTable)
 	}
 }
 
-func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int) {
+func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int) {
 	switch instruct {
 	case 0:
+		if tape[*tapeCell] == 0 {
+			*iterator = jumpTable[*iterator]
+		}
 	case 1:
 		*tapeCell++
+		if *tapeCell >= len(tape) {
+			fmt.Println("ERROR: Tape pointer moved beyond memory range.")
+			os.Exit(1)
+		}
 	case 2:
 		*tapeCell--
+		if *tapeCell < 0 {
+			fmt.Println("ERROR: Tape pointer moved before memory start.")
+			os.Exit(1)
+		}
 	case 3:
-		if tape[*tapeCell] == 3 {
+		target := tape[*tapeCell]
+		if target == 3 {
 			fmt.Printf("ERROR: infinite loop detected! instruction %d . \n", *iterator)
 			os.Exit(1)
 		}
-		runInstruction(tape, tapeCell, register, iterator, tape[*tapeCell])
+		runInstruction(tape, tapeCell, register, iterator, target, jumpTable)
 	case 4:
 		if tape[*tapeCell] == 0 {
 			var input string
 			fmt.Scan(&input)
-			char := int(input[0])
-			tape[*tapeCell] = char
+			if len(input) > 0 {
+				tape[*tapeCell] = int(input[0])
+			}
 		} else {
-			fmt.Println(string(rune(tape[*tapeCell])))
+			fmt.Print(string(rune(tape[*tapeCell])))
 		}
 	case 5:
 		tape[*tapeCell]--
 	case 6:
 		tape[*tapeCell]++
 	case 7:
+		if tape[*tapeCell] != 0 {
+			*iterator = jumpTable[*iterator]
+		}
 	case 8:
 		tape[*tapeCell] = 0
 	case 9:
@@ -82,15 +128,17 @@ func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, ins
 			*register = 0
 		}
 	case 10:
-		fmt.Println(string(rune(tape[*tapeCell])))
+		fmt.Print(string(rune(tape[*tapeCell])))
 	case 11:
 		var input string
 		fmt.Scan(&input)
-		char := int(input[0])
-		tape[*tapeCell] = char
+		if len(input) > 0 {
+			tape[*tapeCell] = int(input[0])
+		}
+	default:
+		fmt.Printf("ERROR: undefined instruction %d at position %d.\n", instruct, *iterator)
+		os.Exit(1)
 	}
-	fmt.Printf("ERROR: instruction %d is not defined! instruction %d .\n", instruct, *iterator)
-	os.Exit(1)
 }
 
 func tokenize(instruct string, i int) (int, error) {
@@ -119,6 +167,7 @@ func tokenize(instruct string, i int) (int, error) {
 		return 10, nil
 	case "Tuq":
 		return 11, nil
+	default:
+		return 0, fmt.Errorf("ERROR: instruction %s is not defined! position %d\n", instruct, i)
 	}
-	return 0, fmt.Errorf("ERROR: instruction %s is not defined! instruction %d .\n", instruct, i)
 }
