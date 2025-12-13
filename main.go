@@ -32,6 +32,7 @@ Usage: qut file.qut`)
 	instructions := make([]int, len(stringFields))
 	for i, field := range stringFields {
 		instructions[i], err = tokenize(field, i)
+		debugPrinter("TOKENIZING ", field, instructions[i])
 		if err != nil {
 			fmt.Print(err)
 			os.Exit(1)
@@ -71,6 +72,8 @@ Usage: qut file.qut`)
 	register := 0
 
 	for i := 0; i < len(instructions); i++ {
+		debugPrinter("TAPE: ", tape, "CELL: ", tapeCell, "REGISTER: ", register, "INST", i)
+		debugPrinter(instructions[i])
 		runInstruction(tape, &tapeCell, &register, &i, instructions[i], jumpTable)
 	}
 }
@@ -82,15 +85,15 @@ func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, ins
 			*iterator = jumpTable[*iterator]
 		}
 	case 1:
-		*tapeCell++
-		if *tapeCell >= len(tape) {
-			fmt.Println("ERROR: Tape pointer moved beyond memory range.")
-			os.Exit(1)
-		}
-	case 2:
 		*tapeCell--
 		if *tapeCell < 0 {
 			fmt.Println("ERROR: Tape pointer moved before memory start.")
+			os.Exit(1)
+		}
+	case 2:
+		*tapeCell++
+		if *tapeCell >= len(tape) {
+			fmt.Println("ERROR: Tape pointer moved beyond memory range.")
 			os.Exit(1)
 		}
 	case 3:
@@ -169,5 +172,11 @@ func tokenize(instruct string, i int) (int, error) {
 		return 11, nil
 	default:
 		return 0, fmt.Errorf("ERROR: instruction %s is not defined! position %d\n", instruct, i)
+	}
+}
+
+func debugPrinter(content ...any) {
+	if os.Getenv("DEBUG") == "true" {
+		fmt.Print("[DEBUG]", content, "\n")
 	}
 }
