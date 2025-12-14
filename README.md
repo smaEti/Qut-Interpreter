@@ -1,7 +1,3 @@
-Here’s a concise and clear README for your GitHub project:
-
----
-
 # QUT Language Interpreter
 
 A simple interpreter for **QUT**, a minimalistic esoteric programming language implemented in Go.
