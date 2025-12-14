@@ -32,7 +32,7 @@ Usage: qut file.qut`)
 	instructions := make([]int, len(stringFields))
 	for i, field := range stringFields {
 		instructions[i], err = tokenize(field, i)
-		debugPrinter("TOKENIZING ", field, instructions[i])
+		debugPrinter("TOKENIZING ", i, "-", field, instructions[i])
 		if err != nil {
 			fmt.Print(err)
 			os.Exit(1)
@@ -41,12 +41,13 @@ Usage: qut file.qut`)
 
 	jumpTable := make(map[int]int)
 	stack := []int{}
+
 	for i, inst := range instructions {
-		if inst == 0 {
+		if inst == 7 { // QUT
 			stack = append(stack, i)
-		} else if inst == 7 {
+		} else if inst == 0 { // qut
 			if len(stack) == 0 {
-				fmt.Printf("ERROR: unmatched QUT at instruction %d\n", i)
+				fmt.Printf("ERROR: unmatched qut at instruction %d\n", i)
 				os.Exit(1)
 			}
 			start := stack[len(stack)-1]
@@ -55,35 +56,27 @@ Usage: qut file.qut`)
 			jumpTable[i] = start
 		}
 	}
+
 	if len(stack) > 0 {
-		fmt.Printf("ERROR: %d unmatched qut instruction(s) found at positions: ", len(stack))
-		for idx, pos := range stack {
-			if idx > 0 {
-				fmt.Print(", ")
-			}
-			fmt.Print(pos)
-		}
-		fmt.Println()
+		fmt.Printf("ERROR: %d unmatched QUT(s)\n", len(stack))
 		os.Exit(1)
 	}
 
-	tape := make([]int, 250)
+	tape := make([]int, 10)
 	tapeCell := 0
 	register := 0
 
 	for i := 0; i < len(instructions); i++ {
-		debugPrinter("TAPE: ", tape, "CELL: ", tapeCell, "REGISTER: ", register, "INST", i)
 		debugPrinter(instructions[i])
 		runInstruction(tape, &tapeCell, &register, &i, instructions[i], jumpTable)
+		debugPrinter("TAPE: ", tape, "CELL: ", tapeCell, "REGISTER: ", register, "INST", i)
 	}
 }
 
 func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int) {
 	switch instruct {
 	case 0:
-		if tape[*tapeCell] == 0 {
-			*iterator = jumpTable[*iterator]
-		}
+		*iterator = jumpTable[*iterator] - 1
 	case 1:
 		*tapeCell--
 		if *tapeCell < 0 {
@@ -99,7 +92,7 @@ func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, ins
 	case 3:
 		target := tape[*tapeCell]
 		if target == 3 {
-			fmt.Printf("ERROR: infinite loop detected! instruction %d . \n", *iterator)
+			fmt.Printf("ERROR: infinite loop detected! instruction %d.\n", *iterator)
 			os.Exit(1)
 		}
 		runInstruction(tape, tapeCell, register, iterator, target, jumpTable)
@@ -118,7 +111,7 @@ func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, ins
 	case 6:
 		tape[*tapeCell]++
 	case 7:
-		if tape[*tapeCell] != 0 {
+		if tape[*tapeCell] == 0 {
 			*iterator = jumpTable[*iterator]
 		}
 	case 8:
