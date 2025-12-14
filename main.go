@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path"
@@ -8,71 +9,46 @@ import (
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		fmt.Println(`ERROR: Expected at least 2 arguments.
-Usage: qut file.qut`)
-		os.Exit(1)
-	}
-
-	filename := os.Args[1]
-	fileExtention := path.Ext(filename)
-
-	if strings.Compare(fileExtention, ".qut") != 0 {
-		fmt.Println("ERROR: This is not a qut file.")
-		os.Exit(1)
-	}
-
-	file, err := os.ReadFile(filename)
-	if err != nil {
-		fmt.Println("ERROR:", err)
-		os.Exit(1)
-	}
-
-	stringFields := strings.Fields(strings.TrimSpace(string(file)))
-	instructions := make([]int, len(stringFields))
-	for i, field := range stringFields {
-		instructions[i], err = tokenize(field, i)
-		debugPrinter("TOKENIZING ", i, "-", field, instructions[i])
-		if err != nil {
-			fmt.Print(err)
-			os.Exit(1)
-		}
-	}
-
-	jumpTable := make(map[int]int)
-	stack := []int{}
-
-	for i, inst := range instructions {
-		if inst == 7 { // QUT
-			stack = append(stack, i)
-		} else if inst == 0 { // qut
-			if len(stack) == 0 {
-				fmt.Printf("ERROR: unmatched qut at instruction %d\n", i)
-				os.Exit(1)
-			}
-			start := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			jumpTable[start] = i
-			jumpTable[i] = start
-		}
-	}
-
-	if len(stack) > 0 {
-		fmt.Printf("ERROR: %d unmatched QUT(s)\n", len(stack))
-		os.Exit(1)
-	}
-
+	var stringFields []string
 	tape := make([]int, 10)
 	tapeCell := 0
 	register := 0
 
+	// when there is a file
+	if len(os.Args) == 2 {
+		stringFields = getFile(os.Args[1])
+		qutRun(tape, stringFields, &tapeCell, &register)
+		return
+	}
+
+	fmt.Print(`>> Welcome to the QUT language! for exit, just type exit!!`, "\n")
+
+	// working with language in commandline
+	for {
+		fmt.Print(">> ")
+		reader := bufio.NewReader(os.Stdin)
+		instructionsWithEndline, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("An error occurred while reading the command line:", err)
+			os.Exit(2)
+		}
+		stringFields = strings.Fields(strings.TrimSpace(instructionsWithEndline))
+		qutRun(tape, stringFields, &tapeCell, &register)
+	}
+}
+func qutRun(tape []int, stringFields []string, tapeCell *int, register *int) {
+	instructions := make([]int, len(stringFields))
+	stringFieldsToInstructionsConv(stringFields, instructions)
+	jumpTable := make(map[int]int)
+	stack := []int{}
+	makeJumpTable(instructions, stack, jumpTable)
+
 	for i := 0; i < len(instructions); i++ {
 		debugPrinter(instructions[i])
-		runInstruction(tape, &tapeCell, &register, &i, instructions[i], jumpTable)
+		runInstruction(tape, tapeCell, register, &i, instructions[i], jumpTable)
 		debugPrinter("TAPE: ", tape, "CELL: ", tapeCell, "REGISTER: ", register, "INST", i)
 	}
 }
-
 func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int) {
 	switch instruct {
 	case 0:
@@ -171,5 +147,56 @@ func tokenize(instruct string, i int) (int, error) {
 func debugPrinter(content ...any) {
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Print("[DEBUG]", content, "\n")
+	}
+}
+
+func getFile(filename string) []string {
+
+	fileExtention := path.Ext(filename)
+
+	if strings.Compare(fileExtention, ".qut") != 0 {
+		fmt.Println("ERROR: This is not a qut file.")
+		os.Exit(1)
+	}
+
+	file, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
+	}
+	return strings.Fields(strings.TrimSpace(string(file)))
+}
+
+func stringFieldsToInstructionsConv(stringFields []string, instructions []int) {
+	var err error
+	for i, field := range stringFields {
+		instructions[i], err = tokenize(field, i)
+		debugPrinter("TOKENIZING ", i, "-", field, instructions[i])
+		if err != nil {
+			fmt.Print(err)
+			os.Exit(1)
+		}
+	}
+}
+
+func makeJumpTable(instructions []int, stack []int, jumpTable map[int]int) {
+	for i, inst := range instructions {
+		if inst == 7 { // QUT
+			stack = append(stack, i)
+		} else if inst == 0 { // qut
+			if len(stack) == 0 {
+				fmt.Printf("ERROR: unmatched qut at instruction %d\n", i)
+				os.Exit(1)
+			}
+			start := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			jumpTable[start] = i
+			jumpTable[i] = start
+		}
+	}
+
+	if len(stack) > 0 {
+		fmt.Printf("ERROR: %d unmatched QUT(s)\n", len(stack))
+		os.Exit(1)
 	}
 }
