@@ -33,6 +33,9 @@ func main() {
 			os.Exit(2)
 		}
 		stringFields = strings.Fields(strings.TrimSpace(instructionsWithEndline))
+		if strings.Compare(stringFields[0], "exit") == 0 {
+			os.Exit(0)
+		}
 		qutRun(tape, stringFields, &tapeCell, &register)
 	}
 }
@@ -46,7 +49,7 @@ func qutRun(tape []int, stringFields []string, tapeCell *int, register *int) {
 	for i := 0; i < len(instructions); i++ {
 		debugPrinter(instructions[i])
 		runInstruction(tape, tapeCell, register, &i, instructions[i], jumpTable)
-		debugPrinter("TAPE: ", tape, "CELL: ", tapeCell, "REGISTER: ", register, "INST", i)
+		debugPrinter("TAPE: ", tape, "CELL: ", *tapeCell, "REGISTER: ", *register, "INST", i)
 	}
 }
 func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int) {
