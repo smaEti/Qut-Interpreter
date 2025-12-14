@@ -48,14 +48,18 @@ func qutRun(tape []int, stringFields []string, tapeCell *int, register *int) {
 
 	for i := 0; i < len(instructions); i++ {
 		debugPrinter(instructions[i])
-		runInstruction(tape, tapeCell, register, &i, instructions[i], jumpTable)
-		debugPrinter("TAPE: ", tape, "CELL: ", *tapeCell, "REGISTER: ", *register, "INST", i)
+		runInstruction(tape, tapeCell, register, &i, instructions[i], jumpTable, instructions)
+		debugPrinter("TAPE: ", tape, "CELL: ", *tapeCell, "REGISTER: ", *register, "ITERATOR", i)
 	}
 }
-func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int) {
+func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int, instructions []int) {
 	switch instruct {
 	case 0:
-		*iterator = jumpTable[*iterator] - 1
+		nextJump := jumpTable[*iterator]
+		if nextJump < 0 || nextJump > (len(instructions)-1) {
+			fmt.Println("ERROR: Tape pointer moved before or after the instructions list.")
+			os.Exit(1)
+		}
 	case 1:
 		*tapeCell--
 		if *tapeCell < 0 {
@@ -74,7 +78,7 @@ func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, ins
 			fmt.Printf("ERROR: infinite loop detected! instruction %d.\n", *iterator)
 			os.Exit(1)
 		}
-		runInstruction(tape, tapeCell, register, iterator, target, jumpTable)
+		runInstruction(tape, tapeCell, register, iterator, target, jumpTable, instructions)
 	case 4:
 		if tape[*tapeCell] == 0 {
 			var input string
