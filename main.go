@@ -55,11 +55,12 @@ func qutRun(tape []int, stringFields []string, tapeCell *int, register *int) {
 func runInstruction(tape []int, tapeCell *int, register *int, iterator *int, instruct int, jumpTable map[int]int, instructions []int) {
 	switch instruct {
 	case 0:
-		nextJump := jumpTable[*iterator]
+		nextJump := jumpTable[*iterator] - 1
 		if nextJump < 0 || nextJump > (len(instructions)-1) {
 			fmt.Println("ERROR: Tape pointer moved before or after the instructions list.")
 			os.Exit(1)
 		}
+		*iterator = nextJump
 	case 1:
 		*tapeCell--
 		if *tapeCell < 0 {
